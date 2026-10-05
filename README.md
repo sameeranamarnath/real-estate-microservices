@@ -65,3 +65,26 @@ Each backend service ships its own `Dockerfile` and `docker-compose.yaml`.
 | `DJANGO_SECRET_KEY` | `backend/config` | Django signing key; falls back to a dev value when unset |
 
 No real credentials are in the repo - use the `.env.example` files.
+
+## Property assistant (`ai/`)
+
+A fourth service next to `config`, `core` and the front end. It answers
+"find me a 3-bed under 800k near the water" over the house catalogue, and it
+relaxes a filter rather than returning nothing.
+
+```
+START -> parse_criteria -> retrieve -+-> broaden -> retrieve
+                                     |
+                                     +-> answer -> END
+```
+
+- **Structured first** - the free-text ask is parsed into filters (city, price band, beds, must-haves)
+- **Broaden once** - if too few listings survive the filters, the tightest constraint is dropped and the search re-runs
+- **Says what it did** - the answer names the relaxed filter instead of hiding it
+- **Models** - vLLM (`Qwen/Qwen3-32B` chat, `BAAI/bge-m3` embeddings) with Qdrant for retrieval
+
+```
+docker compose -f docker-compose.ai.yml up
+```
+
+`POST /listings` indexes the catalogue, `POST /ask` answers. See [`ai/README.md`](ai/README.md).
