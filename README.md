@@ -1,18 +1,67 @@
+# Real estate microservices
 
-An event-driven real estate web application with a house collection. With this application, users  and prospective buyers can browse the properties in the collection to see if they like any of them.
+Event-driven backend plus a React front end for a property collection. Buyers
+browse listings; the write side (house CRUD) and the interaction side (likes,
+view checks) never call each other on the request path - they talk over RabbitMQ.
 
-Frontend stack= React TypeScript, HTML, CSS, and Bootstrap. 
-Backend stack
-a) config ( django,mysql,docker)
-b) houses ( django,mysql,docker)
-c) core ( flask,mysql,docker)
-The communication channel between the microservices is RabbitMQ, which will serve as the message broker and the event bus. 
-Micro-apps structure:
+## Shape of the system
 
-a)The Config app will configure all the installed apps, middleware, URLs/endpoints, and databases for the back-end service. 
+```
+React (TypeScript) --HTTP--> config (Django) --AMQP--> core (Flask)
+                                  |                       |
+                              houses app              HTTP back into
+                                  |                    config / houses
+                                MySQL                     MySQL
+```
 
-b) The Houses app will contain house creation, listing, updating, and deletion.
+| Piece | Path | Stack | Job |
+| --- | --- | --- | --- |
+| config | `backend/config` | Django 5, MySQL, Docker | Settings, URL routing and DB config; installs and supervises the `houses` app; runs the AMQP producer and consumer |
+| houses | `backend/config/houses` | Django | House create, list, update, delete |
+| core | `backend/core` | Flask, MySQL, Docker | House likes and checks; consumes house events and calls back into config/houses |
+| frontend | `frontend` | React, TypeScript, Bootstrap | Browse and like houses |
 
-c) The Core app will have house liking, checking, and other actions. 
+`config` owns `houses` in-process. `core` is a separate service: it consumes house
+events off the bus and makes internal HTTP calls into `config` and `houses`.
 
-The Config app will oversee the Houses app internally, while the Core app will make internal API requests to the Config and Houses apps.
+## Messaging
+
+RabbitMQ is both the broker and the event bus. Producers and consumers build the
+connection from one variable (`pika.URLParameters`):
+
+```
+AQMP_URL=amqps://<user>:<password>@<host>/<vhost>
+```
+
+## Run it
+
+Each backend service ships its own `Dockerfile` and `docker-compose.yaml`.
+
+1. Create the env files from the templates:
+   - `backend/config/.env` from `backend/config/.env.example`
+   - `backend/core/.env` from `backend/core/.env.example`
+2. config + houses:
+   ```
+   cd backend/config
+   docker compose up --build
+   ```
+3. core:
+   ```
+   cd backend/core
+   docker compose up --build
+   ```
+4. front end:
+   ```
+   cd frontend
+   npm install
+   npm start
+   ```
+
+## Config
+
+| Variable | Files | Purpose |
+| --- | --- | --- |
+| `AQMP_URL` | `backend/config/.env`, `backend/core/.env` | AMQP connection string for the event bus |
+| `DJANGO_SECRET_KEY` | `backend/config` | Django signing key; falls back to a dev value when unset |
+
+No real credentials are in the repo - use the `.env.example` files.
