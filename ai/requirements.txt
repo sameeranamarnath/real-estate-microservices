@@ -1,0 +1,10 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+sse-starlette==2.1.3
+langgraph==0.2.60
+langchain-core==0.3.28
+langchain-openai==0.2.14
+qdrant-client==1.12.1
+httpx==0.28.1
