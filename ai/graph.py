@@ -61,9 +61,7 @@ def _matches(listing: dict[str, Any], criteria: dict[str, Any]) -> bool:
         if criteria.get("min_price") and float(price) < float(criteria["min_price"]):
             return False
     beds = listing.get("beds")
-    if beds and criteria.get("min_beds") and int(beds) < int(criteria["min_beds"]):
-        return False
-    return True
+    return not (beds and criteria.get("min_beds") and int(beds) < int(criteria["min_beds"]))
 
 
 def retrieve(state: SearchState) -> dict[str, Any]:
@@ -98,8 +96,7 @@ def answer(state: SearchState) -> dict[str, Any]:
     if not results:
         return {"answer": "No listings matched, even after relaxing the filters."}
     compact = [
-        {k: r.get(k) for k in ("title", "city", "price", "beds", "baths", "sqft")}
-        for r in results
+        {k: r.get(k) for k in ("title", "city", "price", "beds", "baths", "sqft")} for r in results
     ]
     relaxed = "; ".join(state.get("relaxations", [])) or "none"
     prompt = (
@@ -129,9 +126,7 @@ def build_graph():
 
     g.add_edge(START, "parse_criteria")
     g.add_edge("parse_criteria", "retrieve")
-    g.add_conditional_edges(
-        "retrieve", _after_retrieve, {"broaden": "broaden", "answer": "answer"}
-    )
+    g.add_conditional_edges("retrieve", _after_retrieve, {"broaden": "broaden", "answer": "answer"})
     g.add_edge("broaden", "retrieve")
     g.add_edge("answer", END)
     return g.compile()

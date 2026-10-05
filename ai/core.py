@@ -76,9 +76,7 @@ def ensure_collection() -> str:
     if not c.collection_exists(s.qdrant_collection):
         c.create_collection(
             collection_name=s.qdrant_collection,
-            vectors_config=models.VectorParams(
-                size=s.embed_dim, distance=models.Distance.COSINE
-            ),
+            vectors_config=models.VectorParams(size=s.embed_dim, distance=models.Distance.COSINE),
         )
     return s.qdrant_collection
 
@@ -104,7 +102,7 @@ def index_listings(listings: list[dict[str, Any]]) -> int:
     start = c.count(collection_name=collection).count
     points = [
         models.PointStruct(id=start + i, vector=v, payload={**item, "text": _listing_text(item)})
-        for i, (item, v) in enumerate(zip(listings, vectors))
+        for i, (item, v) in enumerate(zip(listings, vectors, strict=False))
     ]
     c.upsert(collection_name=collection, points=points)
     return len(points)

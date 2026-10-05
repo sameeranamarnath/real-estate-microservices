@@ -1,7 +1,8 @@
 """HTTP surface for the property assistant."""
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from core import get_settings, index_listings, search_listings
 from graph import APP, ask
+from guardrails import sanitise
 
 api = FastAPI(title="property assistant", version="1.0.0")
 
@@ -45,15 +47,14 @@ def health() -> dict[str, Any]:
 @api.post("/listings")
 def add_listings(req: ListingsRequest) -> dict[str, int]:
     payload = [
-        {k: v for k, v in item.model_dump().items() if v is not None}
-        for item in req.listings
+        {k: v for k, v in item.model_dump().items() if v is not None} for item in req.listings
     ]
     return {"indexed": index_listings(payload)}
 
 
 @api.post("/ask")
 def ask_endpoint(req: AskRequest) -> dict[str, Any]:
-    result = ask(req.question)
+    result = ask(sanitise(req.question))
     return {
         "answer": result.get("answer", ""),
         "criteria": result.get("criteria", {}),
@@ -71,7 +72,8 @@ async def ask_stream(req: AskRequest) -> StreamingResponse:
         state: dict[str, Any] = {"ask": req.question}
         for step in APP.stream(state):
             for node, update in step.items():
-                yield f"event: node\ndata: {json.dumps({'node': node, 'update': _safe(update)})}\n\n"
+                payload = json.dumps({"node": node, "update": _safe(update)})
+                yield f"event: node\ndata: {payload}\n\n"
                 state.update(update)
         yield f"event: done\ndata: {json.dumps(_safe(state))}\n\n"
 
