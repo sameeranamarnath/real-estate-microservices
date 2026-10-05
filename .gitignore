@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Django
+*.sqlite3
+staticfiles/
+media/
+
+# Node / React
+node_modules/
+npm-debug.log*
+yarn-error.log*
+build/
+coverage/
+
+# Secrets - never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
